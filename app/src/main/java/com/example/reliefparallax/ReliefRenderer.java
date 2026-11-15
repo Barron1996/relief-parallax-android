@@ -13,6 +13,9 @@ import android.media.MediaPlayer;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
+import android.graphics.SurfaceTexture;
+import android.opengl.Matrix;
+import android.view.Surface;
 import android.util.Log;
 
 import java.nio.FloatBuffer;
@@ -40,11 +43,24 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
     // ---- program ----
     private int progNormal = 0;
     private int progCompose = 0;
+    private int progBlit   = 0;   // OES -> 2D
 
     // ---- uniform 位置 ----
     private int uN_tex, uN_texel, uN_sharp, uN_hasTex;
     private int uC_color, uC_normal, uC_res, uC_relief, uC_parallax,
                 uC_depth, uC_halo, uC_light, uC_shift, uC_split, uC_kill;
+    private int uB_oes, uB_matrix;
+
+    // ---- 外部屏幕输入通道（MediaProjection）----
+    private int texOes    = 0;        // GL_TEXTURE_EXTERNAL_OES
+    private int texScreen = 0;        // blit 后的普通 2D 纹理
+    private int fboScreen = 0;
+    private SurfaceTexture screenTexture = null;
+    private Surface screenSurface = null;
+    private volatile boolean screenMode = false;      // true = 走抓屏输入
+    private volatile boolean screenFrameNew = false;
+    private final float[] screenMatrix = new float[16];
+    private boolean screenMatrixReady = false;
 
     // ---- 资源 ----
     private FloatBuffer quad;
@@ -119,6 +135,12 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
 
             progNormal = GlUtil.linkProgram(vs, fsN, new String[]{"aPos"});
             progCompose = GlUtil.linkProgram(vs, fsC, new String[]{"aPos"});
+            // OES 输入 blit：顶点用带 uTexMatrix 的版本，片元吃 samplerExternalOES
+            String vsOes = GlUtil.readAsset(ctx, "vs_oes.glsl");
+            String fsOes = GlUtil.readAsset(ctx, "fs_oes.glsl");
+            progBlit = GlUtil.linkProgram(vsOes, fsOes, new String[]{"aPos"});
+            uB_oes    = GLES20.glGetUniformLocation(progBlit, "uOES");
+            uB_matrix = GLES20.glGetUniformLocation(progBlit, "uTexMatrix");
 
             uN_tex    = GLES20.glGetUniformLocation(progNormal, "uTex");
             uN_texel  = GLES20.glGetUniformLocation(progNormal, "uTexel");
@@ -169,6 +191,14 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         fbo = GlUtil.createFbo(texNormal);
         normalW = nw;
         normalH = nh;
+
+        // 抓屏结果落地的 2D 纹理 + FBO（全分辨率，避免二次模糊）
+        if (texScreen != 0) {
+            GLES20.glDeleteTextures(1, new int[]{texScreen}, 0);
+            GLES20.glDeleteFramebuffers(1, new int[]{fboScreen}, 0);
+        }
+        texScreen = GlUtil.createTexture(width, height);
+        fboScreen = GlUtil.createFbo(texScreen);
     }
 
     @Override
@@ -179,8 +209,21 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         if (dt > 0.1f) dt = 0.1f;   // 卡顿时钳制，避免跳变
         lastFrameNanos = now;
 
+        // ---- 抳屏通道的建立/销毁（必须在 GL 线程）----
+        if (pendingAttachScreen) {
+            pendingAttachScreen = false;
+            createScreenChannel();
+        }
+        if (pendingDetachScreen) {
+            pendingDetachScreen = false;
+            releaseScreenChannel();
+        }
+
         // ---- 处理待上传素材 ----
         handlePendingUploads();
+
+        // ---- 抓屏模式：先把 OES 转成 2D ----
+        if (screenMode) runBlitPass();
 
         // ---- 更新视差 ----
         driver.update(dt);
@@ -296,6 +339,98 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         GLES20.glVertexAttribPointer(attribLoc, 2, GLES20.GL_FLOAT, false, 0, quad);
     }
 
+    // =========================================================
+    // 抳屏输入：blit OES -> 2D
+    // =========================================================
+    private void runBlitPass() {
+        if (screenTexture == null) return;
+        try {
+            if (screenFrameNew) {
+                screenFrameNew = false;
+                screenTexture.updateTexImage();
+                screenTexture.getTransformMatrix(screenMatrix);
+                screenMatrixReady = true;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "updateTexImage(屏幕) 失败", e);
+            return;
+        }
+        if (!screenMatrixReady) return;
+
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboScreen);
+        GLES20.glViewport(0, 0, viewW, viewH);
+        GLES20.glClearColor(0f, 0f, 0f, 1f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+        GLES20.glUseProgram(progBlit);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_EXTERNAL_OES, texOes);
+        GLES20.glUniform1i(uB_oes, 0);
+        GLES20.glUniformMatrix4fv(uB_matrix, 1, false, screenMatrix, 0);
+        bindQuad(progBlit, 0);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+    }
+
+    /**
+     * 把一块外部 Surface 作为画面源（MediaProjection 的 VirtualDisplay 用）。
+     * 必须在 GL 线程创建 OES 纹理；这里用 runOnGl 排队。
+     */
+    public void attachScreenSurface() {
+        pendingAttachScreen = true;
+    }
+
+    /** 当前用于接收屏内容的 Surface（可能在 GL 线程还没创建完，返回 null 时请稍后重试） */
+    public Surface getScreenSurface() { return screenSurface; }
+
+    /** 退出抳屏模式，恢复自绘素材 */
+    public void detachScreen() {
+        pendingDetachScreen = true;
+    }
+
+    public boolean isScreenMode() { return screenMode; }
+
+    private volatile boolean pendingAttachScreen = false;
+    private volatile boolean pendingDetachScreen = false;
+
+    private void createScreenChannel() {
+        releaseScreenChannel();
+        int[] tex = new int[1];
+        GLES20.glGenTextures(1, tex, 0);
+        texOes = tex[0];
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_EXTERNAL_OES, texOes);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_EXTERNAL_OES, 0);
+
+        screenTexture = new SurfaceTexture(texOes);
+        screenTexture.setDefaultBufferSize(Math.max(2, viewW), Math.max(2, viewH));
+        screenTexture.setOnFrameAvailableListener(st -> screenFrameNew = true);
+        screenMatrixReady = false;
+        screenSurface = new Surface(screenTexture);
+        screenMode = true;
+        Log.i(TAG, "抳屏通道已创建 " + viewW + "x" + viewH);
+    }
+
+    private void releaseScreenChannel() {
+        screenMode = false;
+        screenFrameNew = false;
+        screenMatrixReady = false;
+        if (screenSurface != null) {
+            try { screenSurface.release(); } catch (Exception ignore) {}
+            screenSurface = null;
+        }
+        if (screenTexture != null) {
+            try { screenTexture.release(); } catch (Exception ignore) {}
+            screenTexture = null;
+        }
+        if (texOes != 0) {
+            GLES20.glDeleteTextures(1, new int[]{texOes}, 0);
+            texOes = 0;
+        }
+    }
+
     private void runNormalPass() {
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo);
         GLES20.glViewport(0, 0, normalW, normalH);
@@ -307,7 +442,11 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         // 绑定素材纹理
         int srcTex;
         int srcW, srcH;
-        if (source == Source.VIDEO && videoTexId != 0) {
+        if (screenMode) {
+            // 抓屏模式：用 blit 后的 2D 纹理
+            srcTex = texScreen;
+            srcW = viewW; srcH = viewH;
+        } else if (source == Source.VIDEO && videoTexId != 0) {
             srcTex = videoTexId;
             srcW = 1920; srcH = 1080;    // 视频尺寸未知时用近似值，Sobel 采样间距影响不大
         } else {
@@ -338,7 +477,9 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         GLES20.glUseProgram(progCompose);
 
         int srcTex;
-        if (source == Source.VIDEO && videoTexId != 0) {
+        if (screenMode) {
+            srcTex = texScreen;
+        } else if (source == Source.VIDEO && videoTexId != 0) {
             srcTex = videoTexId;
         } else {
             srcTex = texColor;

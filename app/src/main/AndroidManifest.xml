@@ -15,6 +15,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 屏幕抓取（MediaProjection 全场景实时滤镜） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- 陀螺仪 -->
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
@@ -44,8 +46,14 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Overlay preview of local relief-parallax rendering; no screen capture" />
+                android:value="Real-time on-screen relief-parallax filter composited over the captured screen" />
         </service>
+
+        <!-- 抓屏授权令牌持有者（Android 14 要求 mediaProjection 类型前台服务） -->
+        <service
+            android:name=".ScreenCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
     </application>
 

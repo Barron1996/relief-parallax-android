@@ -36,7 +36,7 @@ public class ParallaxDriver implements SensorEventListener {
 
     /** 单参构造：内部自建一份参数（悬浮窗/独立实例用） */
     public ParallaxDriver(Context ctx) {
-        this(ctx, new FilterParams());
+        this(ctx, FilterParams.I);
     }
 
     public ParallaxDriver(Context ctx, FilterParams params) {

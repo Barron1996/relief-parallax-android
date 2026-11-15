@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
@@ -39,12 +40,13 @@ import java.io.InputStream;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQ_IMG  = 1001;
+    private static final int REQ_CAPTURE = 1004;
     private static final int REQ_VID  = 1002;
     private static final int REQ_PERM = 1003;
 
     private GLSurfaceView glView;
     private ReliefRenderer renderer;
-    private final FilterParams P = new FilterParams();
+    private final FilterParams P = FilterParams.I;
     private ParallaxDriver driver;
 
     private TextView tvState;
@@ -185,6 +187,22 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        // 1) 抓屏授权回调
+        if (requestCode == REQ_CAPTURE) {
+            if (resultCode == RESULT_OK && data != null) {
+                Intent s = new Intent(this, ScreenCaptureService.class);
+                s.putExtra(ScreenCaptureService.EXTRA_CODE, resultCode);
+                s.putExtra(ScreenCaptureService.EXTRA_DATA, data);
+                ContextCompat.startForegroundService(this, s);
+                toast(getString(R.string.msg_overlay_on));
+            } else {
+                toast("\u5df2\u53d6\u6d88\u6293\u5c4f\u6388\u6743\uff0c\u5168\u5c4f\u6ee4\u955c\u65e0\u6cd5\u5f00\u542f");
+            }
+            return;
+        }
+
+        // 2) 选图 / 选视频回调
         if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         String type = getContentResolver().getType(uri);
@@ -262,13 +280,33 @@ public class MainActivity extends AppCompatActivity {
         }
         Intent svc = new Intent(this, OverlayService.class);
         if (OverlayService.isRunning) {
+            // 关闭：先撤抓屏，再停覆盖层
+            ContextCompat.startForegroundService(this,
+                    new Intent(this, OverlayService.class).setAction(OverlayService.ACTION_STOP_CAPTURE));
+            stopService(new Intent(this, ScreenCaptureService.class));
             stopService(svc);
             toast(getString(R.string.msg_overlay_off));
         } else {
-            ContextCompat.startForegroundService(this, svc);
-            toast(getString(R.string.msg_overlay_on));
+            // 开启：必须先拿到 MediaProjection 授权，否则抓不到屏幕
+            requestCapturePermission();
         }
     }
+
+    /** 弹出系统「开始录制或投放」授权框 */
+    private void requestCapturePermission() {
+        MediaProjectionManager mpm =
+                (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        if (mpm == null) {
+            toast("本机不支持屏幕抓取");
+            return;
+        }
+        try {
+            startActivityForResult(mpm.createScreenCaptureIntent(), REQ_CAPTURE);
+        } catch (Exception e) {
+            toast("无法申请抓屏权限：" + e.getMessage());
+        }
+    }
+
 
     // =========================================================
     // 权限

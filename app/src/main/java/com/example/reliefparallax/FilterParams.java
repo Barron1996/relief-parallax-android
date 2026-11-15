@@ -1,10 +1,16 @@
 package com.example.reliefparallax;
 
 /**
- * 所有滤镜参数的统一容器。
- * UI（MainActivity）写入，Renderer 读取，双方通过 volatile 保证可见性。
+ * 所有滤镜参数的统一容器（进程级单例）。
+ * MainActivity 的滑块写入 {@link #I}，OverlayService 的 Renderer 读取同一个实例，
+ * 因此拖动滑块时全屏覆盖层会实时跟随，无需跨进程/跨组件传参。
  */
-public class FilterParams {
+public final class FilterParams {
+
+    /** 全局唯一实例 */
+    public static final FilterParams I = new FilterParams();
+
+    private FilterParams() { }
 
     // ---- 强度 ----
     public volatile float master   = 1.0f;   // 总强度 0..2
@@ -21,7 +27,8 @@ public class FilterParams {
     public volatile boolean drift   = true;  // 自动漂移
     public volatile boolean gyro    = false; // 陀螺仪驱动
 
-    /** 总强度是否作用于浮雕与视差 */
+    /** 总强度作用于浮雕 */
     public float reliefEffective()   { return relief   * master; }
+    /** 总强度作用于视差 */
     public float parallaxEffective() { return parallax * master; }
 }
