@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- 全屏预览 -->
+    <android.opengl.GLSurfaceView
+        android:id="@+id/gl_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 顶栏：状态 + 面板开关 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="#99000000">
+
+        <TextView
+            android:id="@+id/tv_state"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/state_ready"
+            android:textColor="#E8E8F0"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_panel"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="@string/btn_panel"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- 底部参数面板 -->
+    <ScrollView
+        android:id="@+id/panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#CC0B0B0D"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView style="@style/Lbl" android:text="@string/lbl_relief" />
+            <SeekBar android:id="@+id/sb_relief" style="@style/Sb" />
+
+            <TextView style="@style/Lbl" android:text="@string/lbl_parallax" />
+            <SeekBar android:id="@+id/sb_parallax" style="@style/Sb" />
+
+            <TextView style="@style/Lbl" android:text="@string/lbl_depth" />
+            <SeekBar android:id="@+id/sb_depth" style="@style/Sb" />
+
+            <TextView style="@style/Lbl" android:text="@string/lbl_halo" />
+            <SeekBar android:id="@+id/sb_halo" style="@style/Sb" />
+
+            <TextView style="@style/Lbl" android:text="@string/lbl_sharp" />
+            <SeekBar android:id="@+id/sb_sharp" style="@style/Sb" />
+
+            <TextView style="@style/Lbl" android:text="@string/lbl_light" />
+            <SeekBar android:id="@+id/sb_light" style="@style/Sb" />
+
+            <!-- 开关行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <Button android:id="@+id/btn_drift" style="@style/Btn"
+                    android:text="@string/btn_drift" />
+                <Button android:id="@+id/btn_gyro" style="@style/Btn"
+                    android:text="@string/btn_gyro" />
+                <Button android:id="@+id/btn_kill" style="@style/Btn"
+                    android:text="@string/btn_kill" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <Button android:id="@+id/btn_split" style="@style/Btn"
+                    android:text="@string/btn_split" />
+                <Button android:id="@+id/btn_pick" style="@style/Btn"
+                    android:text="@string/btn_pick" />
+                <Button android:id="@+id/btn_reset" style="@style/Btn"
+                    android:text="@string/btn_reset" />
+            </LinearLayout>
+
+            <Button android:id="@+id/btn_overlay" style="@style/Btn"
+                android:layout_marginTop="6dp"
+                android:layout_width="match_parent"
+                android:text="@string/btn_overlay" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

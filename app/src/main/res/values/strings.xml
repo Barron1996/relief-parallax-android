@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">浮雕视差</string>
+
+    <!-- 按钮 -->
+    <string name="btn_pick">换素材</string>
+    <string name="btn_gyro">陀螺仪</string>
+    <string name="btn_drift">自动漂移</string>
+    <string name="btn_kill">一键关闭</string>
+    <string name="btn_split">按住看原图</string>
+    <string name="btn_reset">内置测试图</string>
+    <string name="btn_overlay">悬浮窗</string>
+    <string name="btn_panel">面板</string>
+
+    <string name="act_on">开</string>
+    <string name="act_off">关</string>
+
+    <!-- 滑杆 -->
+    <string name="lbl_relief">浮雕强度</string>
+    <string name="lbl_parallax">视差强度</string>
+    <string name="lbl_depth">假深度</string>
+    <string name="lbl_halo">光晕抑制</string>
+    <string name="lbl_sharp">法线锐度</string>
+    <string name="lbl_light">光源角度</string>
+
+    <!-- 状态提示 -->
+    <string name="state_ready">就绪 — 内置测试图</string>
+    <string name="gyro_unavailable">本机没有可用陀螺仪/加速度计</string>
+    <string name="msg_default_restored">已恢复内置测试图</string>
+    <string name="msg_load_fail">素材加载失败</string>
+    <string name="msg_image_loaded">图片已载入 %1$d × %2$d</string>
+    <string name="msg_video_loaded">视频已载入</string>
+    <string name="msg_video_hint">首版仅支持本地文件路径的视频，请先把视频拷到内部存储再选</string>
+    <string name="msg_need_overlay">请先授予「悬浮窗」权限</string>
+    <string name="msg_overlay_on">悬浮窗已开启（全屏覆盖层）</string>
+    <string name="msg_overlay_off">悬浮窗已关闭</string>
+
+    <!-- 通知 -->
+    <string name="overlay_channel">悬浮窗</string>
+    <string name="overlay_notif_title">浮雕视差已开启</string>
+    <string name="overlay_notif_text">点按返回 App 关闭</string>
+</resources>

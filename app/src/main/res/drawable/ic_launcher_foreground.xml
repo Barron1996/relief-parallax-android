@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 浮雕感的层叠圆环，象征前景/后景位移 -->
+    <path
+        android:fillColor="#6EE7B7"
+        android:fillAlpha="0.18"
+        android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+    <path
+        android:fillColor="#6EE7B7"
+        android:fillAlpha="0.35"
+        android:pathData="M54,54m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+    <path
+        android:fillColor="#6EE7B7"
+        android:pathData="M54,54m-13,0a13,13 0,1 1,26 0a13,13 0,1 1,-26 0" />
+</vector>

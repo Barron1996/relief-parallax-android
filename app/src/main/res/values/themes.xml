@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ReliefParallax" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- 参数标签 -->
+    <style name="Lbl">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#C9C9D4</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:paddingTop">6dp</item>
+    </style>
+
+    <!-- 滑杆 -->
+    <style name="Sb">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:maxHeight">8dp</item>
+        <item name="android:minHeight">8dp</item>
+    </style>
+
+    <!-- 面板按钮 -->
+    <style name="Btn">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:background">#22FFFFFF</item>
+        <item name="android:textColor">#EDEDF5</item>
+        <item name="android:padding">0dp</item>
+    </style>
+</resources>

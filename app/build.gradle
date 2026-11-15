@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.reliefparallax'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.reliefparallax"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // 用 debug 签名，方便直接安装测试
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            // 默认 debug 配置
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // 不压缩 assets 里的 glsl，方便运行时读取
+    androidResources {
+        noCompress 'glsl'
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core:1.12.0'
+}
