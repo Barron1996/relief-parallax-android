@@ -39,4 +39,19 @@ android {
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.core:core:1.12.0'
+
+    // appcompat 传递依赖会把 kotlin-stdlib-jdk7/jdk8 1.6.x 拽进来，
+    // 与 kotlin-stdlib 1.8.x 产生重复类（checkDebugDuplicateClasses 失败）。
+    // 统一到 1.8.x 后 kotlin-stdlib-jdk7/jdk8 已是空壳，可消除冲突。
+    constraints {
+        implementation('org.jetbrains.kotlin:kotlin-stdlib:1.8.22') {
+            because 'unify kotlin stdlib version to avoid duplicate classes'
+        }
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22') {
+            because 'unify kotlin stdlib version to avoid duplicate classes'
+        }
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22') {
+            because 'unify kotlin stdlib version to avoid duplicate classes'
+        }
+    }
 }
