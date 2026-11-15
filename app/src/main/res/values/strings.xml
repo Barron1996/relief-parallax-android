@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">浮雕视差</string>
+    <string name="app_tagline">RELIEF · PARALLAX ENGINE</string>
 
     <!-- 按钮 -->
     <string name="btn_pick">换素材</string>
@@ -35,8 +36,39 @@
     <string name="msg_overlay_on">悬浮窗已开启（全屏覆盖层）</string>
     <string name="msg_overlay_off">悬浮窗已关闭</string>
 
-    <!-- 通知 -->
-    <string name="overlay_channel">悬浮窗</string>
-    <string name="overlay_notif_title">浮雕视差已开启</string>
-    <string name="overlay_notif_text">点按返回 App 关闭</string>
+    <!-- 通知：OverlayService 使用 -->
+    <string name="notif_channel">全屏滤镜</string>
+    <string name="notif_channel_desc">保持浮雕视差覆盖层运行所需的前台服务</string>
+    <string name="notif_title">浮雕视差运行中</string>
+    <string name="notif_text">全屏滤镜已启用 · 点按返回控制面板</string>
+
+    <!-- 权限 / 授权引导 -->
+    <string name="msg_need_capture">需要「屏幕录制」授权才能覆盖其他 App</string>
+    <string name="msg_capture_cancel">已取消抓屏授权…</string>
+    <string name="msg_capture_denied">授权被拒绝，无法开启全屏滤镜</string>
+    <string name="msg_root_hint">已检测到 Root，可用 Root 直接抓屏</string>
+    <string name="msg_a11y_hint">未检测到无障碍服务，建议在系统设置中开启以提升稳定性</string>
+
+    <!-- 引导页 -->
+    <string name="guide_title">启用全屏浮雕</string>
+    <string name="guide_sub">三步完成，全局生效</string>
+    <string name="guide_step1_title">授予悬浮窗</string>
+    <string name="guide_step1_desc">允许在其他应用上层显示，覆盖层才能铺满整块屏幕（含状态栏）。</string>
+    <string name="guide_step2_title">授予屏幕录制</string>
+    <string name="guide_step2_desc">用于采集屏幕画面做实时浮雕与视差处理，画面仅在本机 GPU 内处理，不上传。</string>
+    <string name="guide_step3_title">开启全屏滤镜</string>
+    <string name="guide_step3_desc">回到控制面板点「悬浮窗」，或直接点下方按钮启动。</string>
+    <string name="guide_grant">去授权</string>
+    <string name="guide_start">立即开启</string>
+    <string name="guide_close">稍后</string>
+
+    <!-- 卡片 / 分组 -->
+    <string name="group_effect">效果</string>
+    <string name="group_perf">运行</string>
+    <string name="group_misc">其他</string>
+
+    <!-- 主开关按钮 / 状态 -->
+    <string name="btn_start">开启全屏滤镜</string>
+    <string name="btn_stop">关闭全屏滤镜</string>
+    <string name="state_idle">待机</string>
 </resources>

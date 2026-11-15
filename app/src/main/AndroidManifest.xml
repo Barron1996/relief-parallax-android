@@ -8,18 +8,17 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
-    <!-- 悬浮窗 -->
+    <!-- 悬浮窗：覆盖层铺满整屏（含状态栏区域） -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- 前台服务 (Android 14 要求声明类型) -->
+    <!-- 前台服务（Android 14 起必须声明具体类型对应的权限） -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- 屏幕抓取（MediaProjection 全场景实时滤镜） -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- 陀螺仪 -->
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
     <application
         android:allowBackup="true"
@@ -40,20 +39,29 @@
             </intent-filter>
         </activity>
 
+        <!-- 授权引导页 -->
+        <activity
+            android:name=".GuideActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.ReliefParallax" />
+
+        <!--
+            唯一的覆盖层服务：同时承担
+            1) MediaProjection 屏幕采集（mediaProjection 类型）
+            2) 全屏悬浮覆盖与 GL 合成（specialUse 类型）
+            因此类型必须同时声明两者，Android 14 校验才能通过。
+        -->
         <service
             android:name=".OverlayService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="mediaProjection|specialUse"
+            tools:targetApi="34">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Real-time on-screen relief-parallax filter composited over the captured screen" />
         </service>
-
-        <!-- 抓屏授权令牌持有者（Android 14 要求 mediaProjection 类型前台服务） -->
-        <service
-            android:name=".ScreenCaptureService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
 
     </application>
 

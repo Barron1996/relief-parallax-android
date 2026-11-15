@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 金色 ripple，用于按钮触摸反馈（作为 foreground 蒙层） -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#66F5E7A3">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFFFF" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</ripple>

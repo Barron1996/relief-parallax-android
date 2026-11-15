@@ -1,40 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- ============ 主题：黑金 / 无边框 / 全屏延伸 ============ -->
     <style name="Theme.ReliefParallax" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@drawable/bg_page</item>
+        <item name="android:colorBackground">@color/bg_deep</item>
+
+        <!-- 状态栏 / 导航栏：全透明，让渐变底色一直延伸上去，视觉上无割裂 -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
+
+        <!-- API 27+ 允许导航栏浅色图标的对照；保持暗色 -->
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- 透明状态下仍要绘制系统栏背景 -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+        <!-- 允许内容延伸到刘海/挖孔区域（API 28+ 自适应） -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowContentTransitions">true</item>
+
+        <!-- 强调色：金色，用于 ripple / 控件高亮 -->
+        <item name="colorAccent">@color/gold</item>
+        <item name="colorPrimary">@color/gold</item>
+        <item name="colorPrimaryDark">@color/bg_deep</item>
+        <item name="android:textColorPrimary">@color/text_main</item>
+        <item name="android:textColorSecondary">@color/text_sub</item>
     </style>
 
-    <!-- 参数标签 -->
+    <!-- ============ 参数标签 ============ -->
     <style name="Lbl">
-        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">#C9C9D4</item>
+        <item name="android:textColor">@color/text_sub</item>
         <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.06</item>
         <item name="android:paddingTop">6dp</item>
     </style>
 
-    <!-- 滑杆 -->
+    <!-- 参数当前值（右侧金色数字） -->
+    <style name="LblVal">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/gold_light</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:paddingTop">6dp</item>
+    </style>
+
+    <!-- ============ 滑杆 ============ -->
     <style name="Sb">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:maxHeight">8dp</item>
-        <item name="android:minHeight">8dp</item>
+        <item name="android:maxHeight">6dp</item>
+        <item name="android:minHeight">6dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:progressDrawable">@drawable/seek_track</item>
+        <item name="android:thumb">@drawable/seek_thumb</item>
+        <item name="android:splitTrack">false</item>
     </style>
 
-    <!-- 面板按钮 -->
-    <style name="Btn">
+    <!-- ============ 按钮：主（金） ============ -->
+    <style name="BtnGold">
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_height">46dp</item>
         <item name="android:layout_weight">1</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:background">@drawable/sel_btn_gold</item>
+        <item name="android:textColor">#1A1206</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- ============ 按钮：次（暗底金边） ============ -->
+    <style name="BtnGhost">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">46dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:background">@drawable/sel_btn_ghost</item>
+        <item name="android:textColor">@color/gold_light</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 兼容旧布局引用：Btn 映射到次按钮样式 -->
+    <style name="Btn" parent="BtnGhost">
+        <item name="android:layout_height">42dp</item>
         <item name="android:layout_marginEnd">4dp</item>
         <item name="android:layout_marginStart">4dp</item>
         <item name="android:textSize">11sp</item>
-        <item name="android:textAllCaps">false</item>
-        <item name="android:background">#22FFFFFF</item>
-        <item name="android:textColor">#EDEDF5</item>
-        <item name="android:padding">0dp</item>
+        <item name="android:textColor">@color/gold_light</item>
     </style>
+
+    <!-- ============ 卡片容器 ============ -->
+    <style name="Card">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:layout_marginBottom">12dp</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
+    <!-- 卡片标题 -->
+    <style name="CardTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/gold</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.18</item>
+        <item name="android:paddingBottom">10dp</item>
+    </style>
+
 </resources>

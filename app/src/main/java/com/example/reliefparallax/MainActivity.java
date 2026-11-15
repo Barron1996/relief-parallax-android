@@ -151,6 +151,21 @@ public class MainActivity extends AppCompatActivity {
         Button btnOverlay = findViewById(R.id.btn_overlay);
         btnOverlay.setOnClickListener(v -> toggleOverlay());
 
+        // 首次启动引导：仅在没有 overlay 权限或没抓过屏时弹一次
+        Button btnGuide = findViewById(R.id.btn_guide);
+        if (btnGuide != null) {
+            btnGuide.setOnClickListener(v ->
+                    startActivity(new Intent(this, GuideActivity.class)));
+        }
+
+        // 同步初始状态：布局里的按钮文案必须与 FilterParams 的真实值一致
+        btnKill.setText(P.killed ? R.string.act_on : R.string.act_off);
+        btnDrift.setText(P.drift ? R.string.act_on : R.string.act_off);
+        btnGyro.setText(P.gyro ? R.string.act_on : R.string.act_off);
+        btnOverlay.setText(OverlayService.isRunning ? R.string.btn_stop : R.string.btn_start);
+        setState(OverlayService.isRunning ? getString(R.string.msg_overlay_on)
+                                          : getString(R.string.state_idle));
+
         Button btnPanel = findViewById(R.id.btn_panel);
         View panel = findViewById(R.id.panel);
         btnPanel.setOnClickListener(v ->
@@ -159,17 +174,49 @@ public class MainActivity extends AppCompatActivity {
 
     private interface IntConsumer { void accept(int v); }
 
+    /**
+     * 绑定滑杆：除了把值写进 FilterParams，还同步刷新右侧金色数值标签。
+     * 标签 id 约定为 tv_v_ + 滑杆去前缀（sb_relief -> tv_v_relief）。
+     * 标签不存在时静默跳过，保证布局可以裁剪而不影响逻辑。
+     */
     private void bindSeek(int id, int min, int max, int progress, IntConsumer cb) {
         SeekBar sb = findViewById(id);
         sb.setMax(max - min);
         sb.setProgress(Math.max(0, Math.min(max - min, progress - min)));
-        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
-                cb.accept(p + min);
-            }
-            @Override public void onStartTrackingTouch(SeekBar s) { }
-            @Override public void onStopTrackingTouch(SeekBar s) { }
-        });
+
+        TextView val = findViewById(valLabelId(id));
+        if (val != null) {
+            val.setText(String.valueOf(progress));
+            sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                    int v = p + min;
+                    cb.accept(v);
+                    val.setText(String.valueOf(v));
+                }
+                @Override public void onStartTrackingTouch(SeekBar s) { }
+                @Override public void onStopTrackingTouch(SeekBar s) { }
+            });
+        } else {
+            sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                    cb.accept(p + min);
+                }
+                @Override public void onStartTrackingTouch(SeekBar s) { }
+                @Override public void onStopTrackingTouch(SeekBar s) { }
+            });
+        }
+    }
+
+    /** sb_xxx -> tv_v_xxx，通过资源名解析，避免手写一长串映射表。 */
+    private int valLabelId(int seekId) {
+        try {
+            String seekName = getResources().getResourceEntryName(seekId);
+            if (!seekName.startsWith("sb_")) return 0;
+            return getResources().getIdentifier(
+                    "tv_v_" + seekName.substring(3), "id", getPackageName());
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     // =========================================================
@@ -188,16 +235,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        // 1) 抓屏授权回调
+        // 1) 抓屏授权回调：授权数据直接交给 OverlayService，由它自持 MediaProjection
         if (requestCode == REQ_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
-                Intent s = new Intent(this, ScreenCaptureService.class);
-                s.putExtra(ScreenCaptureService.EXTRA_CODE, resultCode);
-                s.putExtra(ScreenCaptureService.EXTRA_DATA, data);
+                Intent s = new Intent(this, OverlayService.class)
+                        .setAction(OverlayService.ACTION_START_CAPTURE)
+                        .putExtra(OverlayService.EXTRA_CODE, resultCode)
+                        .putExtra(OverlayService.EXTRA_DATA, data);
                 ContextCompat.startForegroundService(this, s);
                 toast(getString(R.string.msg_overlay_on));
             } else {
-                toast("\u5df2\u53d6\u6d88\u6293\u5c4f\u6388\u6743\uff0c\u5168\u5c4f\u6ee4\u955c\u65e0\u6cd5\u5f00\u542f");
+                toast(getString(R.string.msg_capture_denied));
             }
             return;
         }
@@ -280,11 +328,10 @@ public class MainActivity extends AppCompatActivity {
         }
         Intent svc = new Intent(this, OverlayService.class);
         if (OverlayService.isRunning) {
-            // 关闭：先撤抓屏，再停覆盖层
+            // 关闭：只发 ACTION_STOP，Service 内部自行释放 VirtualDisplay / Projection / GL
             ContextCompat.startForegroundService(this,
-                    new Intent(this, OverlayService.class).setAction(OverlayService.ACTION_STOP_CAPTURE));
-            stopService(new Intent(this, ScreenCaptureService.class));
-            stopService(svc);
+                    new Intent(this, OverlayService.class).setAction(OverlayService.ACTION_STOP));
+            ((Button) findViewById(R.id.btn_overlay)).setText(R.string.btn_start);
             toast(getString(R.string.msg_overlay_off));
         } else {
             // 开启：必须先拿到 MediaProjection 授权，否则抓不到屏幕

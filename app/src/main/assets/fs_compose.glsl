@@ -1,6 +1,14 @@
-// ============ Pass 2: 浮雕光照 + 视差采样 + 合成 ============
-// 输入: uColor(原图) / uNormal(Pass1 输出)
-// 输出: 最终画面
+// ============ Pass 2: 光照合成（无感浮雕 + 视差） ============
+// 输入: uColor(原画面), uNormal(RG=法线, A=高度)
+// uniform 名与 ReliefRenderer 的绑定保持一致，不要随意改名。
+//
+// ===== 无感四条铁律（"纯白不能变青"的根本保证）=====
+// 1) 色相不变：只对 RGB 三通道加同一个标量 delta，绝不逐通道加不同偏置。
+//    任何 vec3(r,g,b) 形式的偏移都会在灰/白区被放大成可见色偏。
+// 2) 中值不变：平坦区 reliefTerm == 0 → delta == 0 → 输出严格等于输入。
+// 3) 两端衰减：权重 lum*(1-lum)*4 在 lum=0/1 处为 0，峰值在 0.5。
+//    纯白与纯黑区域完全不动，不会过曝截断、不会染色。
+// 4) 加法而非乘法：避免 col*(1+k) 在 col=1.0 处越界截断产生边缘色阶。
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -9,87 +17,61 @@ precision mediump float;
 
 varying vec2 vUV;
 
-uniform sampler2D uColor;
-uniform sampler2D uNormal;
-uniform vec2  uRes;        // 屏幕像素尺寸
-uniform float uRelief;     // 浮雕强度
-uniform float uParallax;   // 视差幅度
-uniform float uDepth;      // 深度分层对比
-uniform float uHalo;       // 边缘光晕抑制
-uniform float uLightAng;   // 光源方向(弧度)
-uniform vec2  uShift;      // 视差偏移 (-1..1)
-uniform float uSplit;      // 0=滤镜 1=原图
-uniform float uKill;       // 1=完全关闭滤镜
+uniform sampler2D uColor;    // 原画面（0 号纹理）
+uniform sampler2D uNormal;   // 法线+高度（1 号纹理）
 
-float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+uniform vec2  uRes;          // 视口尺寸
+uniform float uRelief;       // 浮雕强度 0..1
+uniform float uParallax;     // 视差强度 0..1
+uniform float uDepth;        // 深度系数 0..1.5
+uniform float uHalo;         // 高光强度 0..1
+uniform float uLightAng;     // 光源角度（弧度）
+uniform vec2  uShift;        // 视差偏移量
+uniform float uSplit;        // 按住看原图
+uniform float uKill;         // 总开关
+
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
 void main() {
+    // 视差：按高度场推开采样点，形成纵深位移
     vec2 uv = vUV;
+    if (uParallax > 0.001 && uSplit < 0.5) {
+        float h = texture2D(uNormal, vUV).a;
+        float dep = (h - 0.5) * uDepth * uParallax;
+        uv += uShift * dep;
+        uv = clamp(uv, vec2(0.0), vec2(1.0));
+    }
 
-    // ---- 一键关闭：直通原图 ----
-    if (uKill > 0.5) {
-        gl_FragColor = vec4(texture2D(uColor, uv).rgb, 1.0);
+    vec4 col4 = texture2D(uColor, uv);
+
+    // 关闭态 / 按住看原图：严格直通，像素级不变
+    if (uKill > 0.5 || uSplit > 0.5 || uRelief <= 0.001) {
+        gl_FragColor = col4;
         return;
     }
 
-    // ---- 1) 取回法线与高度 ----
-    vec4 nPack = texture2D(uNormal, uv);
-    float h0 = nPack.a;
+    vec3 col = col4.rgb;
+    float lum = dot(col, LUMA);
 
-    // ---- 2) 假深度：低频亮度(9 点稀疏模糊) ----
-    vec2 t = (1.0 / uRes) * 4.0;
-    float hl = 0.0;
-    hl += texture2D(uNormal, uv + vec2(-t.x, -t.y)).a;
-    hl += texture2D(uNormal, uv + vec2( 0.0, -t.y)).a;
-    hl += texture2D(uNormal, uv + vec2( t.x, -t.y)).a;
-    hl += texture2D(uNormal, uv + vec2(-t.x,  0.0)).a;
-    hl += texture2D(uNormal, uv + vec2( t.x,  0.0)).a;
-    hl += texture2D(uNormal, uv + vec2(-t.x,  t.y)).a;
-    hl += texture2D(uNormal, uv + vec2( 0.0,  t.y)).a;
-    hl += texture2D(uNormal, uv + vec2( t.x,  t.y)).a;
-    hl += h0;
-    hl /= 9.0;
+    // ---- 光照 ----
+    vec3 n = normalize(texture2D(uNormal, uv).rgb * 2.0 - 1.0);
 
-    // 深度 = 混合高频/低频亮度，做对比拉伸
-    float depth = mix(h0, hl, 0.65);
-    depth = (depth - 0.5) * (1.0 + uDepth * 2.0) + 0.5;
-    depth = clamp(depth, 0.0, 1.0);
+    // uLightAng 是平面角：拆成 xy 后与法线 xy 做点积，得到纯标量
+    vec2 L = vec2(cos(uLightAng), sin(uLightAng));
 
-    // ---- 3) 视差：按深度偏移 UV ----
-    // 近处(亮)偏移大、远处(暗)偏移小，形成相对位移
-    vec2 pOff = uShift * uParallax * 0.028;
-    vec2 uvP = uv + pOff * (depth - 0.5) * 2.0;
-    uvP = clamp(uvP, vec2(0.0005), vec2(0.9995));
+    float reliefTerm = dot(n.xy, L) * uRelief;
 
-    vec3 col = texture2D(uColor, uvP).rgb;
-    vec3 nrm = texture2D(uNormal, uvP).rgb * 2.0 - 1.0;
-    float nlen = length(nrm.xy);
-    nrm = normalize(nrm);
+    // 两端软衰减权重
+    float weight = lum * (1.0 - lum) * 4.0;
 
-    // ---- 4) 方向光浮雕光照 ----
-    vec3 L = normalize(vec3(cos(uLightAng), sin(uLightAng), 0.9));
-    float ndl = dot(nrm, L);
-    float shade = clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
-    float reliefTerm = (shade - 0.5) * 2.0;   // -1..1
+    // 单一标量增量：等量加到三通道 → 色相绝对不变
+    float delta = reliefTerm * 0.55 * weight;
 
-    // ---- 5) 边缘光晕抑制 ----
-    // 法线横向分量大的地方是锐利边缘，减弱明暗避免白边/黑边
-    float edgeW = smoothstep(0.35, 1.25, nlen);
-    reliefTerm *= mix(1.0, 1.0 - edgeW, uHalo * 0.85);
+    // 高光：只在亮部朝光一侧轻微抬亮，同样等量
+    float spec = pow(max(dot(n.xy, L), 0.0), 8.0) * uHalo * weight * 0.18;
+    delta += spec;
 
-    // ---- 6) 明暗合成 ----
-    float gain = uRelief * 0.85;
-    vec3 lit = col * (1.0 + reliefTerm * gain);
-    lit += vec3(0.045, 0.045, 0.05) * max(reliefTerm, 0.0) * uRelief;
-    lit -= vec3(0.03) * max(-reliefTerm, 0.0) * uRelief;
+    vec3 lit = clamp(col + delta, 0.0, 1.0);
 
-    // ---- 7) 文字可读性保护 ----
-    // 局部对比高的区域（文字/细线）降低明暗扰动
-    float localContrast = smoothstep(0.10, 0.42, abs(h0 - hl) + nlen * 0.18);
-    lit = mix(lit, col, localContrast * 0.55);
-
-    // ---- 8) 对比原图切换 ----
-    vec3 outCol = mix(clamp(lit, 0.0, 1.0), texture2D(uColor, uv).rgb, uSplit);
-
-    gl_FragColor = vec4(outCol, 1.0);
+    gl_FragColor = vec4(lit, col4.a);
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 通知栏小图标：单色白，系统会自动着色；用浮雕三角+波纹示意 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3L3,20h18L12,3zM12,8.2L16.6,17h-9.2L12,8.2z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.6,14.6h6.8v1.2H8.6z" />
+</vector>

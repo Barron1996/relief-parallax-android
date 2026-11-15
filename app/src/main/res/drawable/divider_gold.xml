@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 顶部品牌区下方的金色细分隔线（左实右虚效果用短渐变模拟） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="0"
+        android:startColor="#00D4AF37"
+        android:centerColor="#B3D4AF37"
+        android:endColor="#00D4AF37"
+        android:type="linear" />
+    <size android:height="1dp" />
+</shape>

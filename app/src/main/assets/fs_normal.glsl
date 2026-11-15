@@ -1,5 +1,11 @@
-// ============ Pass 1: Sobel 梯度 → 打包假法线 + 高度 ============
+// ============ Pass 1: Sobel 梯度 → 假法线 + 高度 ============
 // 输出: RGB = 法线映射到 [0,1]，A = 亮度(高度场)
+//
+// 无感设计约束：
+// 1) 梯度只在 Rec.709 亮度域计算，是单通道标量，不存在色相参与。
+// 2) 不做 sRGB→线性 的非线性变换（原实现 c*c 会放大亮部梯度，
+//    导致白底区域在边缘产生染色），保持与屏幕值一致的能量分布。
+// 3) 无素材时输出平法线 + 中灰高度，合成阶段退化为恒等。
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -9,15 +15,14 @@ precision mediump float;
 varying vec2 vUV;
 
 uniform sampler2D uTex;
-uniform vec2  uTexel;      // 1.0 / 纹理尺寸
-uniform float uSharp;      // 梯度放大系数
-uniform float uHasTex;     // 0 = 无素材，输出平法线
+uniform vec2  uTexel;   // 1.0 / 纹理尺寸
+uniform float uSharp;   // 梯度放大系数
+uniform float uHasTex;  // 0 = 无素材，输出平法线
 
-float luma(vec2 uv) {
-    vec3 c = texture2D(uTex, uv).rgb;
-    // 快速近似 sRGB → 线性
-    c = c * c;
-    return dot(c, vec3(0.2126, 0.7152, 0.0722));
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+
+float lum(vec2 uv) {
+    return dot(texture2D(uTex, uv).rgb, LUMA);
 }
 
 void main() {
@@ -28,27 +33,22 @@ void main() {
 
     vec2 t = uTexel;
 
-    // 3x3 Sobel
-    float l00 = luma(vUV + t * vec2(-1.0, -1.0));
-    float l10 = luma(vUV + t * vec2( 0.0, -1.0));
-    float l20 = luma(vUV + t * vec2( 1.0, -1.0));
-    float l01 = luma(vUV + t * vec2(-1.0,  0.0));
-    float l21 = luma(vUV + t * vec2( 1.0,  0.0));
-    float l02 = luma(vUV + t * vec2(-1.0,  1.0));
-    float l12 = luma(vUV + t * vec2( 0.0,  1.0));
-    float l22 = luma(vUV + t * vec2( 1.0,  1.0));
+    float l00 = lum(vUV + t * vec2(-1.0, -1.0));
+    float l10 = lum(vUV + t * vec2( 0.0, -1.0));
+    float l20 = lum(vUV + t * vec2( 1.0, -1.0));
+    float l01 = lum(vUV + t * vec2(-1.0,  0.0));
+    float l21 = lum(vUV + t * vec2( 1.0,  0.0));
+    float l02 = lum(vUV + t * vec2(-1.0,  1.0));
+    float l12 = lum(vUV + t * vec2( 0.0,  1.0));
+    float l22 = lum(vUV + t * vec2( 1.0,  1.0));
 
     float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
     float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
 
-    // 约定：亮 = 凸起。梯度反向，使亮部边缘产生凸起法线
+    // 约定：亮边缘凸起，梯度取反
     vec2 g = -vec2(gx, gy) * uSharp * 2.2;
 
-    // 高度场 = 亮度
-    float h = luma(vUV);
-
-    // 假法线 n = normalize(gx, gy, 1)
     vec3 n = normalize(vec3(g, 1.0));
 
-    gl_FragColor = vec4(n * 0.5 + 0.5, h);
+    gl_FragColor = vec4(n * 0.5 + 0.5, lum(vUV));
 }
