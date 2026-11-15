@@ -297,21 +297,15 @@ public class OverlayService extends Service {
         }
 
         try {
-            if (Build.VERSION.SDK_INT >= 34) {
-                // API 34 起显式传刷新率，避免高刷屏（120/144Hz）被降帧导致抖动
-                virtualDisplay = projection.createVirtualDisplay(
-                        "relief-screen",
-                        screenW, screenH, screenDpi,
-                        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                        surface, null, null, screenHz);
-            } else {
-                virtualDisplay = projection.createVirtualDisplay(
-                        "relief-screen",
-                        screenW, screenH, screenDpi,
-                        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                        surface, null, null);
-            }
-            Log.i(TAG, "VirtualDisplay 创建成功 " + screenW + "x" + screenH);
+            // MediaProjection 仅提供 8 参数重载（无刷新率入参，刷新率由系统决定），
+            // 全版本统一走该签名，避免高版本分支因方法不存在而编译失败。
+            virtualDisplay = projection.createVirtualDisplay(
+                    "relief-screen",
+                    screenW, screenH, screenDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    surface, null, null);
+            Log.i(TAG, "VirtualDisplay 创建成功 " + screenW + "x" + screenH
+                    + " (targetHz=" + screenHz + ")");
             driver.start();
         } catch (Exception e) {
             Log.e(TAG, "createVirtualDisplay 失败", e);
