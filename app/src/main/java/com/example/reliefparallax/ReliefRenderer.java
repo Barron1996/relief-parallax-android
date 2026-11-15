@@ -6,7 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
@@ -87,10 +86,22 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
 
     private long lastFrameNanos = 0L;
 
+    /**
+     * true = 该渲染器只用于接收屏幕输入（悬浮层）。
+     * 此时不加载内置测试图，避免抓屏通道就绪前的重试窗口里
+     * 把「4 个球 + 文字」的测试素材显示到用户屏幕上。
+     */
+    private final boolean screenOnly;
+
     public ReliefRenderer(Context ctx, FilterParams params, ParallaxDriver driver) {
+        this(ctx, params, driver, false);
+    }
+
+    public ReliefRenderer(Context ctx, FilterParams params, ParallaxDriver driver, boolean screenOnly) {
         this.ctx = ctx;
         this.P = params;
         this.driver = driver;
+        this.screenOnly = screenOnly;
     }
 
     // =========================================================
@@ -167,10 +178,14 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         quad = GlUtil.createQuadBuffer();
         texColor = GlUtil.createTexture(1, 1);
 
-        // 首次进入给一张内置图，保证一打开就能看到效果
-        pendingImage = makeDefaultBitmap();
-        uploadRequested = true;
-        source = Source.IMAGE;
+        // 首次进入给一张内置图，保证一打开就能看到效果。
+        // 但悬浮层（screenOnly）不加：它的画面必须完全来自屏幕输入，
+        // 任何测试素材出现在用户屏幕上都是「不无感」。
+        if (!screenOnly) {
+            pendingImage = makeDefaultBitmap();
+            uploadRequested = true;
+            source = Source.IMAGE;
+        }
     }
 
     @Override
@@ -199,6 +214,14 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         }
         texScreen = GlUtil.createTexture(width, height);
         fboScreen = GlUtil.createFbo(texScreen);
+
+        // 抓屏缓冲尺寸必须跟着视图走。
+        // createScreenChannel() 可能早于本回调（首帧就建通道，此时 viewW/viewH 还是 0，
+        // 缓冲退化成 2x2）；而 VirtualDisplay 是按 screenW x screenH 送帧的，
+        // 缓冲尺寸对不上会导致画面拉伸/黑屏。所以每次尺寸变化都要重新对齐。
+        if (screenTexture != null) {
+            screenTexture.setDefaultBufferSize(Math.max(2, width), Math.max(2, height));
+        }
     }
 
     @Override
@@ -223,7 +246,18 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         handlePendingUploads();
 
         // ---- 抓屏模式：先把 OES 转成 2D ----
+        // 注意：必须排在下面的「无污染帧」判断之前。
+        // screenMatrixReady 只能由 runBlitPass() 内部的 updateTexImage 置位，
+        // 若先判断再 blit，则会永远卡在未就绪状态，一帧都画不出来。
         if (screenMode) runBlitPass();
+
+        // ---- 悬浮层：屏幕还没抓到第一帧时，一帧都不画 ----
+        // 否则 runComposePass 会以不透明的黑清屏，屏幕上会闪一块黑，
+        // 比看到测试图更破坏「无感」。直接返回即保持窗口透明，
+        // 用户看到的仍是桌面/前一个 App 的原始画面。
+        if (screenOnly && !(screenMode && screenMatrixReady)) {
+            return;
+        }
 
         // ---- 更新视差 ----
         driver.update(dt);
@@ -516,40 +550,13 @@ public class ReliefRenderer implements GLSurfaceView.Renderer {
         Bitmap bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
 
-        // 背景渐变
+        // 只保留中性深色底：这张图仅作为 App 内预览的占位素材。
+        // 原先那 4 个彩色圆和「浮雕视差」文字已移除 —— 它们只是调试用
+        // 测试图，绝不应该出现在任何面向屏幕的输出里。
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setShader(new LinearGradient(0, 0, size, size,
                 Color.rgb(26, 26, 36), Color.rgb(14, 14, 20), Shader.TileMode.CLAMP));
         c.drawRect(0, 0, size, size, p);
-
-        // 四个"前景球"：中心亮 → 亮=凸起
-        int[][] blobs = {
-                {300, 380, 210, 0xFFE8D9B0},
-                {700, 300, 150, 0xFFD95F4A},
-                {380, 720, 175, 0xFF4A9FD9},
-                {760, 720, 195, 0xFF8F7AD9},
-        };
-        for (int[] b : blobs) {
-            int cx = b[0], cy = b[1], r = b[2], col = b[3];
-            Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG);
-            bp.setShader(new RadialGradient(cx - r * 0.35f, cy - r * 0.35f, r * 1.1f,
-                    new int[]{Color.WHITE, col, 0xFF1A1A22},
-                    new float[]{0f, 0.28f, 1f}, Shader.TileMode.CLAMP));
-            c.drawCircle(cx, cy, r, bp);
-        }
-
-        // 文字（用于验收「文字可读性」）
-        Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
-        tp.setColor(Color.WHITE);
-        tp.setTextAlign(Paint.Align.CENTER);
-        tp.setTextSize(64f);
-        tp.setFakeBoldText(true);
-        c.drawText("浮雕视差", size / 2f, 520f, tp);
-
-        tp.setTextSize(30f);
-        tp.setFakeBoldText(false);
-        tp.setColor(0xFFC9C9D4);
-        c.drawText("RELIEF  PARALLAX  MVP", size / 2f, 574f, tp);
 
         return bmp;
     }

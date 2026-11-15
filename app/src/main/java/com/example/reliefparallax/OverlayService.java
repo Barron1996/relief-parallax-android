@@ -206,7 +206,7 @@ public class OverlayService extends Service {
         glView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
         glView.setPreserveEGLContextOnPause(true);
 
-        renderer = new ReliefRenderer(this, P, driver) {
+        renderer = new ReliefRenderer(this, P, driver, /* screenOnly = */ true) {
             @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                 super.onSurfaceCreated(gl, cfg);
                 // GL 就绪后的第一帧：此时才可以创建 VirtualDisplay
@@ -234,6 +234,16 @@ public class OverlayService extends Service {
                 });
             }
         };
+
+        // 关键修复：让渲染器进入抓屏模式。
+        // 之前这里漏了这一句，导致 pendingAttachScreen 永远为 false
+        // → createScreenChannel() 永不执行 → getScreenSurface() 永远返回 null
+        // → createVirtualDisplay() 每 100ms 重试，投屏通道从未建立，
+        //   屏幕上看到的其实是内置测试图被反复滤镜处理的结果（「静态图」）。
+        // 只是置一个 volatile 标志，真正的 OES 纹理创建会在 GL 线程的
+        // onDrawFrame 里完成，所以放在 setRenderer 前后都安全。
+        renderer.attachScreenSurface();
+
         glView.setRenderer(renderer);
         glView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         glView.onResume();

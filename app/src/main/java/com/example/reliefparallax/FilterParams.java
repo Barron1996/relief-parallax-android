@@ -13,9 +13,11 @@ public final class FilterParams {
     private FilterParams() { }
 
     // ---- 强度 ----
+    // 默认值按「无感」调：浮雕与视差都取克制值，
+    // 只在倾斜设备时能感受到立体感，静止时尽量与原始画面一致。
     public volatile float master   = 1.0f;   // 总强度 0..2
-    public volatile float relief   = 1.0f;   // 浮雕强度 0..2
-    public volatile float parallax = 1.0f;   // 视差幅度 0..2
+    public volatile float relief   = 0.45f;  // 浮雕强度 0..2
+    public volatile float parallax = 0.35f;  // 视差幅度 0..2
     public volatile float sharp    = 1.4f;   // 法线锐化 0.2..4
     public volatile float lightDeg = 315f;   // 光源方向 0..360 度
     public volatile float depth    = 0.5f;   // 深度分层对比 0..1
@@ -24,8 +26,8 @@ public final class FilterParams {
     // ---- 开关 ----
     public volatile boolean killed  = false; // 一键关闭（直通原图）
     public volatile boolean split   = false; // 对比原图
-    public volatile boolean drift   = true;  // 自动漂移
-    public volatile boolean gyro    = false; // 陀螺仪驱动
+    public volatile boolean drift   = false; // 自动漂移（默认关：静止时不晃）
+    public volatile boolean gyro    = true;  // 陀螺仪驱动（默认开：倾斜才有效果）
 
     /** 总强度作用于浮雕 */
     public float reliefEffective()   { return relief   * master; }
