@@ -19,7 +19,7 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- ---------- 标题区 ---------- -->
+        <!-- ========== 标题区 ========== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -71,7 +71,7 @@
             android:layout_marginTop="22dp"
             android:layout_marginBottom="22dp" />
 
-        <!-- ---------- 步骤 1 ---------- -->
+        <!-- ========== 步骤 1 ========== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -113,7 +113,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ---------- 步骤 2 ---------- -->
+        <!-- ========== 步骤 2 ========== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -155,7 +155,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ---------- 步骤 3 ---------- -->
+        <!-- ========== 步骤 3 ========== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -197,7 +197,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ---------- 能力探测提示（默认隐藏，有结论时由代码显示） ---------- -->
+        <!-- ========== 能力探测提示（默认隐藏，有结论时由代码显示） ========== -->
         <TextView
             android:id="@+id/tv_root_hint"
             android:layout_width="match_parent"
@@ -218,7 +218,7 @@
             android:layout_marginTop="4dp"
             android:visibility="gone" />
 
-        <!-- ---------- 操作区 ---------- -->
+        <!-- ========== 操作区 ========== -->
         <Button
             android:id="@+id/btn_guide_start"
             android:layout_width="match_parent"

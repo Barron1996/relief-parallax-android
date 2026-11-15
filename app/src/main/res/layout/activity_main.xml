@@ -134,7 +134,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- ---------- 卡片：效果参数 ---------- -->
+            <!-- ========== 卡片：效果参数 ========== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -281,7 +281,7 @@
                     style="@style/Sb" />
             </LinearLayout>
 
-            <!-- ---------- 卡片：运行开关 ---------- -->
+            <!-- ========== 卡片：运行开关 ========== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -336,7 +336,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ---------- 卡片：素材与其他 ---------- -->
+            <!-- ========== 卡片：素材与其他 ========== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
